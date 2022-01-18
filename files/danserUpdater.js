@@ -9,7 +9,7 @@ const settingsGenerator = require("./settingsGenerator")
 module.exports = async cb => {
     var link
     if (process.platform === "win32") {
-        link = `https://kanrs.kanpots.ga/danser-latest-win.zip`
+        link = `https://kanrs.kanpots.ga/danser-latest-windows.zip`
     } else {
         link = `https://kanrs.kanpots.ga/danser-latest-linux.zip`
     }
