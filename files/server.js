@@ -3,16 +3,16 @@ const fs = require("fs")
 var util = require('util');
 var today = new Date()
 var dateTime = today.getDate() + '.' + `${today.getMonth() + 1}` + '.' + today.getFullYear() + ' . ' + today.getHours() + '.' + today.getMinutes()
-// console.log(dateTime)
-fs.mkdirSync(__dirname + '/logs')
-fs.writeFileSync(__dirname + `/logs/${dateTime}.log`, 'Setting up log...\n')
-var log_file = fs.createWriteStream(__dirname + `/logs/${dateTime}.log`, { flags: 'w' });
-var log_stdout = process.stdout;
+// // console.log(dateTime)
+// fs.mkdirSync(__dirname + '/logs')
+// fs.writeFileSync(__dirname + `/logs/${dateTime}.log`, 'Setting up log...\n')
+// var log_file = fs.createWriteStream(__dirname + `/logs/${dateTime}.log`, { flags: 'w' });
+// var log_stdout = process.stdout;
 
-console.log = function (d) { //
-    log_file.write(util.format(d) + '\n');
-    log_stdout.write(util.format(d) + '\n');
-};
+// console.log = function (d) { //
+//     log_file.write(util.format(d) + '\n');
+//     log_stdout.write(util.format(d) + '\n');
+// };
 
 const dataProcessor = require("./dataProcessor")
 const config = require(process.cwd() + "/config.json")
