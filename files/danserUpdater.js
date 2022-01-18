@@ -9,9 +9,9 @@ const settingsGenerator = require("./settingsGenerator")
 module.exports = async cb => {
     var link
     if (process.platform === "win32") {
-        link = `https://dl.issou.best/ordr/danser-latest-win.zip`
+        link = `https://kanrs.kanpots.ga/danser-latest-win.zip`
     } else {
-        link = `https://dl.issou.best/ordr/danser-latest-linux.zip`
+        link = `https://kanrs.kanpots.ga/danser-latest-linux.zip`
     }
     const output = path.resolve("files/danser/danser.zip")
     let download = wget.download(link, output)
