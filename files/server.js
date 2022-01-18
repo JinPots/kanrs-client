@@ -4,6 +4,7 @@ var util = require('util');
 var today = new Date()
 var dateTime = today.getDate() + '.' + `${today.getMonth() + 1}` + '.' + today.getFullYear() + ' . ' + today.getHours() + '.' + today.getMinutes()
 // console.log(dateTime)
+fs.mkdirSync(__dirname + '/logs')
 fs.writeFileSync(__dirname + `/logs/${dateTime}.log`, 'Setting up log...\n')
 var log_file = fs.createWriteStream(__dirname + `/logs/${dateTime}.log`, { flags: 'w' });
 var log_stdout = process.stdout;
