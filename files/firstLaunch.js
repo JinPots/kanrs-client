@@ -216,12 +216,7 @@ module.exports = async () => {
                 message: "What do you want for your server name?",
                 default: "A good name could be (your username)'s PC for example."
             },
-            {
-                name: "ibAccount",
-                message: "Do you have an issou.best / KanRS account? If yes, you can enter your username here to link this client instance with it and get rewarded credits for each video recorded. Else, just press enter.",
-                default: "Don't have any"
-            },
-            { name: "contact", message: "Please enter a way to contact you (Discord username preferred, to know who you are and set you the Renderer role in the KanRS Discord server).", default: "No way to contact = rejection :(" }
+            { name: "contact", message: "Please enter a way to contact you (Discord username preferred, to know who you are and set you the Renderer role in the KanPots Discord server).", default: "No way to contact = rejection :(" }
         ])
 
         var cpu, gpu
