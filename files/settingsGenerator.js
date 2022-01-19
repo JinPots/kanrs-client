@@ -42,7 +42,7 @@ module.exports = async (type, resolution, cb) => {
             switch (config.encoder) {
                 case "cpu":
                     danserConfig.Recording.Encoder = "libx264"
-                    danserConfig.Recording.EncoderOptions = "-crf 21"
+                    danserConfig.Recording.EncoderOptions = "-crf 14"
                     danserConfig.Recording.Preset = "ultrafast"
                     break
                 case "nvidia":
