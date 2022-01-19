@@ -4,7 +4,7 @@ const config = require(process.cwd() + "/config.json")
 const settingsGenerator = require("./settingsGenerator")
 
 module.exports = async data => {
-    console.log(data)
+    // console.log(data)
     const { sendProgression } = require("./server")
 
     async function writeDanserConfig(danserConfig) {
