@@ -123,14 +123,14 @@ module.exports = async () => {
 
     function downloadBenchMap() {
         if (!fs.existsSync(`${process.cwd()}/files/danser/Songs/894883/`) || !fs.existsSync(`${process.cwd()}/files/danser/Songs/894883.osk`)) {
-            const link = `https://kanrs.kanpots.ga/830537.osz`
-            const output = `${process.cwd()}/files/danser/Songs/830537.osz`
+            const link = `https://kanrs.kanpots.ga/1023926.osz`
+            const output = `${process.cwd()}/files/danser/Songs/1023926.osz`
             let download = wget.download(link, output)
             download.on("error", err => {
                 console.log(err)
             })
             download.on("start", fileSize => {
-                console.log(`Downloading the benchmark map (894883) at ${link}: ${fileSize} bytes to download...`)
+                console.log(`Downloading the benchmark map (1023926) at ${link}: ${fileSize} bytes to download...`)
             })
             download.on("end", () => {
                 console.log(`Finished downloading the benchmark map.`)
