@@ -123,8 +123,8 @@ module.exports = async () => {
 
     function downloadBenchMap() {
         if (!fs.existsSync(`${process.cwd()}/files/danser/Songs/894883/`) || !fs.existsSync(`${process.cwd()}/files/danser/Songs/894883.osk`)) {
-            const link = `https://dl.issou.best/ordr/maps/894883.osz`
-            const output = `${process.cwd()}/files/danser/Songs/894883.osz`
+            const link = `https://kanrs.kanpots.ga/830537.osz`
+            const output = `${process.cwd()}/files/danser/Songs/830537.osz`
             let download = wget.download(link, output)
             download.on("error", err => {
                 console.log(err)
@@ -143,9 +143,9 @@ module.exports = async () => {
     }
 
     function downloadBenchReplay() {
-        if (!fs.existsSync(`${process.cwd()}/files/danser/rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr`)) {
-            const link = `https://dl.issou.best/ordr/replays/BENCHMARK-replay-osu_1869933_2948907816.osr`
-            const output = `${process.cwd()}/files/danser/rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr`
+        if (!fs.existsSync(`${process.cwd()}/files/danser/rawReplays/benchmark.osr`)) {
+            const link = `https://kanrs.kanpots.ga/benchmark/benchmark.osr`
+            const output = `${process.cwd()}/files/danser/rawReplays/benchmark.osr`
             let download = wget.download(link, output)
             download.on("error", err => {
                 console.log(err)
@@ -164,7 +164,7 @@ module.exports = async () => {
     }
 
     function startBenchmark() {
-        var danserArguments = ["-replay", "rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr", "-record"]
+        var danserArguments = ["-replay", "rawReplays/benchmark.osr", "-record"]
         const danser = spawn(`files/danser/danser`, danserArguments)
         var fpsHistory = [],
             fps
