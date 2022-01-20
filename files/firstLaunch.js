@@ -123,7 +123,7 @@ module.exports = async () => {
 
     function downloadBenchMap() {
         if (!fs.existsSync(`${process.cwd()}/files/danser/Songs/894883/`) || !fs.existsSync(`${process.cwd()}/files/danser/Songs/894883.osk`)) {
-            const link = `https://kanrs.kanpots.ga/1023926.osz`
+            const link = `https://kanrs.kanpots.ga/benchmark/1023926.osz`
             const output = `${process.cwd()}/files/danser/Songs/1023926.osz`
             let download = wget.download(link, output)
             download.on("error", err => {
@@ -164,7 +164,7 @@ module.exports = async () => {
     }
 
     function startBenchmark() {
-        var danserArguments = ["-replay", "rawReplays/benchmark.osr", "-record"]
+        var danserArguments = ["-replay", `${process.cwd()}/files/danser/rawReplays/benchmark.osr`, "-record"]
         const danser = spawn(`files/danser/danser`, danserArguments)
         var fpsHistory = [],
             fps
