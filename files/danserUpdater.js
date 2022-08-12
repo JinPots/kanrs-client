@@ -5,13 +5,14 @@ const fs = require("fs")
 const config = require(process.cwd() + "/config.json")
 const { startServer } = require("./server")
 const settingsGenerator = require("./settingsGenerator")
+const { exit } = require("./util")
 
 module.exports = async cb => {
     var link
     if (process.platform === "win32") {
-        link = `https://kanrs.kanpots.ga/danser-latest-windows.zip`
+        link = `http://kanrs.jinpots.space:4001/danser-latest-windows.zip`
     } else {
-        link = `https://kanrs.kanpots.ga/danser-latest-linux.zip`
+        link = `http://kanrs.jinpots.space:4001/danser-latest-linux.zip`
     }
     const output = path.resolve("files/danser/danser.zip")
     let download = wget.download(link, output)
@@ -45,7 +46,7 @@ module.exports = async cb => {
                 })
         } catch (err) {
             console.log("An error occured while unpacking Danser: " + err)
-            process.exit(1)
+            exit()
         }
     })
 }

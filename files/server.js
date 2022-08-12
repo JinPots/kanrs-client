@@ -1,27 +1,28 @@
-const io = require("socket.io-client")
+const { io } = require("socket.io-client")
 const fs = require("fs")
-var util = require('util');
 const dataProcessor = require("./dataProcessor")
 const config = require(process.cwd() + "/config.json")
 const { isRendering, abortRender } = require("./danserHandler")
-const version = 14
+const { exit } = require("./util")
+const version = 18
 let ioClient
 
 var socketUrl
 if (config.customServer && config.customServer.clientUrl !== "") {
     socketUrl = config.customServer.clientUrl
 } else {
-    socketUrl = "http://kanrs.kanpots.ga:8500"
+    socketUrl = "http://kanrs.jinpots.space:4003"
 }
 
 exports.startServer = async () => {
-    ioClient = io.connect(socketUrl)
+    const socket = io(socketUrl, { reconnectionDelay: 10000, reconnectionDelayMax: 10000 })
+    ioClient = socket.connect()
 
     console.log("Server started!")
 
     setTimeout(() => {
         if (!ioClient.connected) {
-            console.log("Cannot connect to the KanRS server. Trying to connect...")
+            console.log("Cannot connect to the o!rdr server. Trying to connect...")
         }
     }, 2000)
 
@@ -29,17 +30,18 @@ exports.startServer = async () => {
         const desktopIdle = require("desktop-idle")
         setInterval(() => {
             if (isRendering() === false && desktopIdle.getIdleTime() < 30 && ioClient.connected) {
-                console.log("The computer is being used, disconnecting from the KanRS server.")
+                console.log("The computer is being used, disconnecting from the o!rdr server.")
+                // when using .disconnect() socket.io won't try to reconnect automatically
                 ioClient.disconnect()
             } else if (desktopIdle.getIdleTime() > 45 && !ioClient.connected) {
-                console.log("The computer is idle, reconnecting to the KanRS server.")
+                console.log("The computer is idle, reconnecting to the o!rdr server.")
                 ioClient.connect()
             }
         }, 60000)
     }
 
     ioClient.on("connect", () => {
-        console.log("Connected to the KanRS server!")
+        console.log("Connected to the o!rdr server!")
         ioClient.emit("id", config.id, version, config.usingOsuApi, config.motionBlurCapable, config.uhdCapable, isRendering())
     })
 
@@ -60,11 +62,16 @@ exports.startServer = async () => {
         console.log("This version of the client is too old! Restart it to apply the update.")
         config.needUpdate = true
         writeConfig()
-        process.exit()
+        exit()
+    })
+
+    ioClient.on("not_approved", () => {
+        console.log("This client still hasn't been approved to be used on o!rdr. You'll be pinged on the o!rdr Discord server when this client will be approved. It shouldn't take more than 2 days.")
+        exit()
     })
 
     ioClient.on("abort_render", () => {
-        console.log("Got abort from the KanRS server.")
+        console.log("Got abort from the o!rdr server.")
         abortRender()
     })
 

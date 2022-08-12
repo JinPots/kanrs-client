@@ -2,9 +2,17 @@ const fs = require("fs")
 const wget = require("wget-improved")
 const config = require(process.cwd() + "/config.json")
 const settingsGenerator = require("./settingsGenerator")
+const { asyncDownload, asyncExtract } = require("./util")
+const { updatePresence } = require("./presence")
+
+let songsDir
+if (config.customSongsFolderPath !== "") {
+    songsDir = config.customSongsFolderPath
+} else {
+    songsDir = process.cwd() + "/files/danser/Songs"
+}
 
 module.exports = async data => {
-    // console.log(data)
     const { sendProgression } = require("./server")
 
     async function writeDanserConfig(danserConfig) {
@@ -13,40 +21,37 @@ module.exports = async data => {
         })
     }
 
-    if (data.skin !== "default") {
-        if (fs.existsSync(`${process.cwd()}/files/danser/Skins/${data.skin}`)) {
-            console.log(`Skin ${data.skin} is present.`)
-            downloadReplay()
+    if (config.discordPresence) updatePresence("Working", false)
+
+    if (data.turboMode) console.log("ENABLING TURBO MODE. PREPARE FOR FAST RENDER.")
+
+    if (data.skin !== "default" && config.customServer.apiUrl === "") {
+        if (data.customSkin) {
+            // custom skins are saved with CUSTOM_ at the start of the skin filename
+            if (fs.existsSync(`${process.cwd()}/files/danser/Skins/CUSTOM_${data.skin}`)) {
+                console.log(`Custom skin ${data.skin} is present.`)
+                downloadReplay()
+            } else {
+                const link = `http://kanrs.jinpots.space:4001/${data.skin}`
+                const localSkinPath = `${process.cwd()}/files/danser/Skins/CUSTOM_${data.skin}.osk`
+
+                await asyncDownload(link, localSkinPath, data.skin, "custom skin")
+                await asyncExtract(localSkinPath, `${process.cwd()}/files/danser/Skins/CUSTOM_${data.skin}`, data.skin, "custom skin")
+                downloadReplay()
+            }
         } else {
-            const link = `https://kanrs.kanpots.ga/${data.skin}.osk`
-            const output = `${process.cwd()}/files/danser/Skins/${data.skin}.osk`
-            let download = wget.download(link, output)
-            download.on("error", err => {
-                console.log(err)
-                process.exit()
-            })
-            download.on("start", fileSize => {
-                console.log(`Downloading the ${data.skin} skin at ${link}: ${fileSize} bytes to download...`)
-            })
-            download.on("end", () => {
-                console.log(`Finished downloading ${data.skin}. Unpacking it now.`)
-                const unzipper = require("unzipper")
-                try {
-                    fs.createReadStream(output)
-                        .pipe(
-                            unzipper.Extract({
-                                path: `${process.cwd()}/files/danser/Skins/${data.skin}`
-                            })
-                        )
-                        .on("close", () => {
-                            console.log(`Finished unpacking ${data.skin}.`)
-                            fs.unlinkSync(output)
-                            downloadReplay()
-                        })
-                } catch (err) {
-                    console.log("An error occured while unpacking the skin: " + err)
-                }
-            })
+            if (fs.existsSync(`${process.cwd()}/files/danser/Skins/${data.skin}`)) {
+                console.log(`Skin ${data.skin} is present.`)
+                downloadReplay()
+            } else {
+                let linkSuffix = config.relay === "direct" ? "" : `-${config.relay}`
+                const link = `http://kanrs.jinpots.space:4001/${data.skin}.osk`
+                const localSkinPath = `${process.cwd()}/files/danser/Skins/${data.skin}.osk`
+
+                await asyncDownload(link, localSkinPath, data.skin, "skin")
+                await asyncExtract(localSkinPath, `${process.cwd()}/files/danser/Skins/${data.skin}`, data.skin, "skin")
+                downloadReplay()
+            }
         }
     } else {
         downloadReplay()
@@ -61,6 +66,7 @@ module.exports = async data => {
         download.on("error", err => {
             console.log("Cannot download the replay.", err)
             sendProgression("download_replay_404")
+            if (config.discordPresence) updatePresence("Idle", false)
         })
         download.on("start", fileSize => {
             console.log(`Downloading the replay at ${link}: ${fileSize} bytes to download...`)
@@ -74,14 +80,14 @@ module.exports = async data => {
     async function downloadMap() {
         const link = data.mapLink
         var filename = link.split("/").pop().split(".")[0]
-        if (fs.existsSync(`${process.cwd()}/files/danser/Songs/${filename}`) && !data.needToRedownload) {
+        if (fs.existsSync(`${songsDir}/${filename}`) && !data.needToRedownload) {
             console.log(`The map ${filename} is present.`)
-            settingsGenerator("change", data.resolution, () => {
+            settingsGenerator("change", data.resolution, data.turboMode, () => {
                 changeConfig()
             })
         } else {
             let foundMap = false
-            const mapFolder = fs.readdirSync(`${process.cwd()}/files/danser/Songs`)
+            const mapFolder = fs.readdirSync(songsDir)
             for (let i = 0; i < mapFolder.length; i++) {
                 if (mapFolder[i].split(" ", 1)[0] === filename) {
                     console.log(`The map ${filename} is present.`)
@@ -92,25 +98,26 @@ module.exports = async data => {
             if (data.needToRedownload) {
                 console.log("A beatmap update is available.")
             } else if (foundMap) {
-                settingsGenerator("change", data.resolution, () => {
+                settingsGenerator("change", data.resolution, data.turboMode, () => {
                     changeConfig()
                 })
             }
             if ((!foundMap && !data.needToRedownload) || data.needToRedownload) {
-                const output = `${process.cwd()}/files/danser/Songs/${filename}.osz`
+                const output = `${songsDir}/${filename}.osz`
                 let download = wget.download(link, output)
                 download.on("start", fileSize => {
                     console.log(`Downloading the map at ${link}: ${fileSize} bytes to download...`)
                 })
                 download.on("end", () => {
                     console.log(`Finished downloading the map.`)
-                    settingsGenerator("change", data.resolution, () => {
+                    settingsGenerator("change", data.resolution, data.turboMode, () => {
                         changeConfig()
                     })
                 })
                 download.on("error", err => {
                     console.log("Cannot download the map.", err)
                     sendProgression("download_404")
+                    if (config.discordPresence) updatePresence("Idle", false)
                 })
             }
         }
@@ -125,7 +132,9 @@ module.exports = async data => {
         danserConfig.Recording.FrameWidth = width !== 3840 ? width : 1920
         danserConfig.Recording.FrameHeight = height !== 2160 ? height : 1080
 
-        if (data.resolution == "640x480") {
+        if (data.turboMode) {
+            danserConfig.Recording.FPS = 15
+        } else if (data.resolution == "640x480") {
             danserConfig.Recording.FPS = 30
         } else {
             danserConfig.Recording.FPS = 60
@@ -150,18 +159,43 @@ module.exports = async data => {
         }
 
         danserConfig.Audio.IgnoreBeatmapSamples = data.useSkinHitsounds
+        danserConfig.Audio.PlayNightcoreSamples = data.playNightcoreSamples
 
         danserConfig.Gameplay.HitErrorMeter.Show = data.showHitErrorMeter
         danserConfig.Gameplay.HitErrorMeter.ShowUnstableRate = data.showUnstableRate
         danserConfig.Gameplay.Score.Show = data.showScore
         danserConfig.Gameplay.HpBar.Show = data.showHPBar
         danserConfig.Gameplay.ComboCounter.Show = data.showComboCounter
-        danserConfig.Gameplay.PPCounter.Show = data.showPPCounter
         danserConfig.Gameplay.KeyOverlay.Show = data.showKeyOverlay
         danserConfig.Gameplay.ScoreBoard.Show = data.showScoreboard
-        danserConfig.Gameplay.HitCounter.Show = data.showHitCounter
 
+        danserConfig.Gameplay.PPCounter.Show = data.showPPCounter
+        danserConfig.Gameplay.HitCounter.Show = data.showHitCounter
         danserConfig.Gameplay.AimErrorMeter.Show = data.showAimErrorMeter
+
+        if (config.customServer.apiUrl === "") {
+            danserConfig.Gameplay.PPCounter.Align = "TopLeft"
+            danserConfig.Gameplay.PPCounter.XPosition = data.elementsPosition.ppCounter.x
+            danserConfig.Gameplay.PPCounter.YPosition = data.elementsPosition.ppCounter.y
+            danserConfig.Gameplay.HitCounter.Align = "TopLeft"
+            danserConfig.Gameplay.HitCounter.ValueAlign = "TopLeft"
+            danserConfig.Gameplay.HitCounter.XPosition = data.elementsPosition.hitCounter.x
+            danserConfig.Gameplay.HitCounter.YPosition = data.elementsPosition.hitCounter.y
+            danserConfig.Gameplay.AimErrorMeter.Align = "TopLeft"
+            danserConfig.Gameplay.AimErrorMeter.XPosition = data.elementsPosition.aimErrorMeter.x
+            danserConfig.Gameplay.AimErrorMeter.YPosition = data.elementsPosition.aimErrorMeter.y
+        } else {
+            danserConfig.Gameplay.PPCounter.Align = "CentreLeft"
+            danserConfig.Gameplay.PPCounter.XPosition = 5
+            danserConfig.Gameplay.PPCounter.YPosition = 150
+            danserConfig.Gameplay.HitCounter.Align = "Left"
+            danserConfig.Gameplay.HitCounter.ValueAlign = "Left"
+            danserConfig.Gameplay.HitCounter.XPosition = 5
+            danserConfig.Gameplay.HitCounter.YPosition = 190
+            danserConfig.Gameplay.AimErrorMeter.Align = "Right"
+            danserConfig.Gameplay.AimErrorMeter.XPosition = 1350
+            danserConfig.Gameplay.AimErrorMeter.YPosition = 650
+        }
 
         if (data.showScoreboard) {
             danserConfig.Gameplay.ScoreBoard.HideOthers = false
@@ -179,7 +213,12 @@ module.exports = async data => {
         danserConfig.Gameplay.Mods.Show = data.showMods
         danserConfig.Gameplay.ShowResultsScreen = data.showResultScreen
 
-        danserConfig.Skin.CurrentSkin = data.skin
+        if (data.customSkin) {
+            danserConfig.Skin.CurrentSkin = "CUSTOM_" + data.skin
+        } else {
+            danserConfig.Skin.CurrentSkin = data.skin
+        }
+
         danserConfig.Skin.Cursor.UseSkinCursor = data.useSkinCursor
         danserConfig.Skin.FallbackSkin = "default_fallback"
 
@@ -267,14 +306,23 @@ module.exports = async data => {
 
         if (data.motionBlur960fps) {
             danserConfig.Recording.MotionBlur.Enabled = true
-            danserConfig.Recording.MotionBlur.OversampleMultiplier = 16
-            danserConfig.Recording.MotionBlur.BlendFrames = 22
+            if (config.customServer.apiUrl === "") {
+                danserConfig.Recording.MotionBlur.OversampleMultiplier = Number(((data.motionBlurForce * 16) / 960).toFixed(0))
+                danserConfig.Recording.MotionBlur.BlendFrames = Number(((data.motionBlurForce * 22) / 960).toFixed(0))
+            } else {
+                danserConfig.Recording.MotionBlur.OversampleMultiplier = 16
+                danserConfig.Recording.MotionBlur.BlendFrames = 22
+            }
         } else {
             danserConfig.Recording.MotionBlur.Enabled = false
         }
 
         danserConfig.Recording.AudioCodec = "aac"
-        danserConfig.Recording.AudioOptions = "-b:a 192k"
+        if (data.turboMode) {
+            danserConfig.Recording.AudioOptions = "-b:a 24k"
+        } else {
+            danserConfig.Recording.AudioOptions = "-b:a 192k"
+        }
 
         await writeDanserConfig(danserConfig)
 
@@ -284,6 +332,9 @@ module.exports = async data => {
         var danserArguments = ["-replay", `rawReplays/${replayFilename}`, "-out", `render${data.renderID}`, "-noupdatecheck"]
         if (data.skip) {
             danserArguments.push("-skip")
+        }
+        if (data.addPitch) {
+            danserArguments.push("-pitch=1.5")
         }
 
         var videoName = `render${data.renderID}`

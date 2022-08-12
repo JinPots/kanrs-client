@@ -6,6 +6,8 @@ const wget = require("wget-improved")
 const config = require(process.cwd() + "/config.json")
 const settingsGenerator = require("./settingsGenerator")
 const danserUpdater = require("./danserUpdater")
+const { exit } = require("./util")
+const unzipper = require("unzipper")
 
 module.exports = async () => {
     var avgFps, renderingType, danserExecutable, serverUrl
@@ -13,17 +15,17 @@ module.exports = async () => {
     if (config.customServer && config.customServer.apiUrl !== "") {
         serverUrl = config.customServer.apiUrl + "/servers"
     } else {
-        serverUrl = "https://kanrs.kanpots.ga/servers"
+        serverUrl = "http://kanrs.jinpots.space:4001/servers"
     }
 
     await axios.request(serverUrl).catch(error => {
         if (!error.status) {
-            console.log("Network error. Maybe the KanRS server is offline or you are not connected to Internet.")
-            process.exit()
+            console.log("Network error. Maybe the o!rdr server is offline or you are not connected to Internet.")
+            exit()
         }
     })
 
-    console.log("Preparing danser for using with KanRS client...")
+    console.log("Preparing danser for using with o!rdr client...")
 
     if (process.platform === "win32") {
         danserExecutable = "files/danser/danser.exe"
@@ -46,10 +48,16 @@ module.exports = async () => {
     }
 
     async function startFirstLaunch() {
-        console.log("By using KanRS client sending your PC CPU and GPU model is required.")
+        console.log("By using o!rdr client sending your PC CPU and GPU model is required.")
         console.log("Be sure to have a good internet connection (>10mbps upload preferably) to upload the videos that danser renders.")
-        console.log("Be aware that KanRS client will regularly download and upload files such as replays, skins and video files.")
-        chooseRenderingType()
+        console.log("Be aware that o!rdr client will regularly download and upload files such as replays, skins and video files.")
+
+        // If a custom server is set, ignore speedtest
+        if (config.customServer && config.customServer.apiUrl.length === 0) {
+            downloadLibrespeedCli()
+        } else {
+            chooseRenderingType()
+        }
     }
 
     async function writeConfig() {
@@ -68,7 +76,7 @@ module.exports = async () => {
         })
 
         async function confirmed() {
-            console.log("Before registering to KanRS a quick benchmark of your system is required.")
+            console.log("Before sending your application a quick benchmark of your system is required.")
             console.log("The benchmark consists of running a render of a 30 second replay using danser.")
             console.log("Please close every CPU/GPU intensive application running on your computer.")
             console.log("Press enter to proceed to the benchmark.")
@@ -81,7 +89,7 @@ module.exports = async () => {
             if (confirmedPrompt) {
                 downloadBenchMap()
             } else {
-                process.exit()
+                exit()
             }
         }
 
@@ -90,7 +98,7 @@ module.exports = async () => {
                 renderingType = "cpu"
                 config.encoder = "cpu"
                 writeConfig()
-                settingsGenerator("change", "", () => {
+                settingsGenerator("change", "", false, () => {
                     confirmed()
                 })
                 break
@@ -98,7 +106,7 @@ module.exports = async () => {
                 renderingType = "gpu"
                 config.encoder = "nvidia"
                 writeConfig()
-                settingsGenerator("change", "", () => {
+                settingsGenerator("change", "", false, () => {
                     confirmed()
                 })
                 break
@@ -106,7 +114,7 @@ module.exports = async () => {
                 renderingType = "gpu"
                 config.encoder = "amd"
                 writeConfig()
-                settingsGenerator("change", "", () => {
+                settingsGenerator("change", "", false, () => {
                     confirmed()
                 })
                 break
@@ -114,7 +122,7 @@ module.exports = async () => {
                 renderingType = "gpu"
                 config.encoder = "intel"
                 writeConfig()
-                settingsGenerator("change", "", () => {
+                settingsGenerator("change", "", false, () => {
                     confirmed()
                 })
                 break
@@ -123,14 +131,14 @@ module.exports = async () => {
 
     function downloadBenchMap() {
         if (!fs.existsSync(`${process.cwd()}/files/danser/Songs/894883/`) || !fs.existsSync(`${process.cwd()}/files/danser/Songs/894883.osk`)) {
-            const link = `https://kanrs.kanpots.ga/benchmark/1023926.osz`
-            const output = `${process.cwd()}/files/danser/Songs/1023926.osz`
+            const link = `https://dl.issou.best/ordr/maps/894883.osz`
+            const output = `${process.cwd()}/files/danser/Songs/894883.osz`
             let download = wget.download(link, output)
             download.on("error", err => {
                 console.log(err)
             })
             download.on("start", fileSize => {
-                console.log(`Downloading the benchmark map (1023926) at ${link}: ${fileSize} bytes to download...`)
+                console.log(`Downloading the benchmark map (894883) at ${link}: ${fileSize} bytes to download...`)
             })
             download.on("end", () => {
                 console.log(`Finished downloading the benchmark map.`)
@@ -143,9 +151,9 @@ module.exports = async () => {
     }
 
     function downloadBenchReplay() {
-        if (!fs.existsSync(`${process.cwd()}/files/danser/rawReplays/benchmark.osr`)) {
-            const link = `https://kanrs.kanpots.ga/benchmark/benchmark.osr`
-            const output = `${process.cwd()}/files/danser/rawReplays/benchmark.osr`
+        if (!fs.existsSync(`${process.cwd()}/files/danser/rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr`)) {
+            const link = `https://dl.issou.best/ordr/replays/BENCHMARK-replay-osu_1869933_2948907816.osr`
+            const output = `${process.cwd()}/files/danser/rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr`
             let download = wget.download(link, output)
             download.on("error", err => {
                 console.log(err)
@@ -164,7 +172,7 @@ module.exports = async () => {
     }
 
     function startBenchmark() {
-        var danserArguments = ["-replay", `${process.cwd()}/files/danser/rawReplays/benchmark.osr`, "-record"]
+        var danserArguments = ["-replay", "rawReplays/BENCHMARK-replay-osu_1869933_2948907816.osr", "-record"]
         const danser = spawn(`files/danser/danser`, danserArguments)
         var fpsHistory = [],
             fps
@@ -206,18 +214,153 @@ module.exports = async () => {
         })
     }
 
+    async function runSpeedtest() {
+        // write config file in librespeed-cli folder
+        const configFile = `${process.cwd()}/files/librespeed-cli/config.json`
+        const config = [
+            {
+                "id": 1,
+                "name": "o!rdrFR",
+                "server": "https://st1.issou.best/",
+                "dlURL": "garbage.php",
+                "ulURL": "empty.php",
+                "pingURL": "empty.php",
+                "getIpURL": "getIP.php"
+            }
+        ]
+        fs.writeFileSync(configFile, JSON.stringify(config))
+
+        // Run speedtest
+        console.log("Running speedtest...")
+        const speedtest = spawn(`${process.cwd()}/files/librespeed-cli/librespeed-cli` + (process.platform === "win32" ? ".exe" : ""), ["--json", "--local-json", `${process.cwd()}/files/librespeed-cli/config.json`])
+        speedtest.stdout.setEncoding("utf8")
+        speedtest.stdout.on("data", async data => {
+            const parsedData = JSON.parse(data)
+
+            console.log(`Download: ${parsedData[0].download} Mbps`)
+            console.log(`Upload: ${parsedData[0].upload} Mbps`)
+
+            // prompt user if they want to continue
+            const cont = await inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "continue",
+                    message: "Do you want to continue?",
+                    default: true
+                }
+            ])
+
+            if (cont.continue) {
+                chooseRenderingType()
+            } else {
+                exit()
+            }
+        })
+
+        speedtest.stderr.setEncoding("utf8")
+        speedtest.stderr.on("data", data => {
+            console.log('There was an error performing the speedtest, skipping...')
+            chooseRenderingType()
+        })
+    }
+
+    async function downloadLibrespeedCli() {
+        // set different links for different platforms (windows, linux, mac)
+        let link;
+        const platform = process.platform;
+        if (platform === "win32") {
+            link = "http://dl.issou.best/ordr/librespeed-cli-win.zip"
+        } else if (platform === "linux") {
+            link = "http://dl.issou.best/ordr/librespeed-cli-linux.zip"
+        }
+
+        // make directory for speedtest-cli if it doesn't exist
+        if (!fs.existsSync(`${process.cwd()}/files/librespeed-cli`)) {
+            fs.mkdirSync(`${process.cwd()}/files/librespeed-cli`)
+        }
+
+        // Prompt user to run speedtest
+        let { doSpeedtest } = await inquirer.prompt({
+            name: "doSpeedtest",
+            type: "list",
+            message: "Should we run a speedtest to o!rdr? If you chose Manually Download before, choose it again.",
+            choices: ['Automatically download', 'Manually download', 'Don\'t run'],
+            default: false
+        })
+
+        if (doSpeedtest === 'Don\'t run') return chooseRenderingType();
+
+
+        // download librespeed-cli
+        if (doSpeedtest === 'Automatically download') {
+            if (fs.existsSync(`${process.cwd()}/files/librespeed-cli/librespeed-cli` + (platform === "win32" ? ".exe" : ""))) {
+                console.log("Librespeed-cli already exists.")
+                return runSpeedtest()
+            }
+
+            const output = `${process.cwd()}/files/librespeed-cli/librespeed-cli.zip`
+            let download = wget.download(link, output)
+    
+            download.on("error", err => {
+                console.log("There was an error downloading librespeed-cli.")
+            })
+    
+            download.on("start", fileSize => {
+                console.log(`Downloading librespeed-cli at ${link}: ${fileSize} bytes to download...`)
+            })
+    
+            download.on("end", () => {
+                console.log(`Finished downloading librespeed-cli.`)
+                
+                // unzip librespeed-cli
+                console.log(`Unzipping librespeed-cli...`)
+                fs.createReadStream(`${process.cwd()}/files/librespeed-cli/librespeed-cli.zip`)
+                .pipe(unzipper.Extract({ path: `${process.cwd()}/files/librespeed-cli/` }))
+                
+                // when unzipping is done, delete zip file
+                .on("close", () => {
+                    console.log(`Finished unzipping librespeed-cli.`)
+                    fs.unlinkSync(`${process.cwd()}/files/librespeed-cli/librespeed-cli.zip`)
+
+                    // chmod when on linux
+                    if (process.platform === "linux") fs.chmodSync("files/librespeed-cli/librespeed-cli", "755")
+
+                    runSpeedtest()  
+                })
+            })
+        }
+
+        if(doSpeedtest === 'Manually download') {
+            if (fs.existsSync(`${process.cwd()}/files/librespeed-cli/librespeed-cli` + (platform === "win32" ? ".exe" : ""))) {
+                console.log("Librespeed-cli already exists.")
+                return runSpeedtest()
+            }
+
+            console.log("Please download librespeed-cli and place it in the files folder.")
+            exit()
+        }
+    }
+
     async function sendServer() {
         const si = require("systeminformation")
         const { nanoid } = require("nanoid")
 
-        let { serverName, ibAccount, contact } = await inquirer.prompt([
-            {
-                name: "serverName",
-                message: "What do you want for your server name?",
-                default: "A good name could be (your username)'s PC for example."
-            },
-            { name: "contact", message: "Please enter a way to contact you (Discord username preferred, to know who you are and set you the Renderer role in the KanPots Discord server).", default: "No way to contact = rejection :(" }
-        ])
+        let serverName, ibAccount, contact
+        if (config.customServer.apiUrl === "") {
+            ;({ serverName, ibAccount, contact } = await inquirer.prompt([
+                {
+                    name: "serverName",
+                    message: "What do you want for your server name?",
+                    default: "A good name could be (your username)'s PC for example."
+                },
+                {
+                    name: "ibAccount",
+                    message: "Do you have an issou.best / o!rdr account? If yes, you can enter your username here to link this client instance with it and get rewarded credits for each video recorded. Else, just press enter.",
+                    default: "Don't have any"
+                },
+                { name: "contact", message: "Please enter a way to contact you (Discord username preferred, to know who you are and set you the Renderer role in the o!rdr Discord server).", default: "No way to contact = rejection :(" }
+            ]))
+        }
 
         var cpu, gpu
         async function getSysInfo() {
@@ -249,17 +392,19 @@ module.exports = async () => {
             .post(serverUrl, server)
             .then(() => {
                 console.log("Your server ID is generated in the config.json file, do not share it with anyone.")
-                console.log("Your submission for helping KanRS got sent successfully! Once accepted, you can open this client and get render jobs.")
-                console.log("You need to join the KanRS Discord server to get accepted, you'll have a cool role :)")
-                console.log("If you have an osu! api v1 key, you can add it to the config file and get jobs which requires a scoreboard. (you can request an API key for free on the osu! website)")
-                console.log('If you have a powerful PC, you can also enable the motionBlurCapable setting in the config file, it will get you jobs that requires a "960fps" video.')
-                console.log('If you have a bad upload speed to the KanRS server you can try using a relay: your client will upload the video to it instead. Check the "relay" setting in the client config.')
-                console.log('The only currently available relay is "us" (in the USA, near NYC). You can go back to direct upload by using "direct" instead.')
+                if (config.customServer.apiUrl === "") {
+                    console.log("Your submission for helping o!rdr got sent successfully! Once accepted, you can open this client and get render jobs.")
+                    console.log("You need to join the o!rdr Discord server to get accepted, you'll have a cool role :)")
+                    console.log("If you have an osu! api v1 key, you can add it to the config file and get jobs which requires a scoreboard. (you can request an API key for free on the osu! website)")
+                    console.log('If you have a powerful PC, you can also enable the motionBlurCapable setting in the config file, it will get you jobs that requires a "960fps" video.')
+                    console.log('If you have a bad upload speed to the o!rdr server you can try using a relay: your client will upload the video to it instead. Check the "relay" setting in the client config.')
+                    console.log('The only currently available relay is "us" (in the USA, near NYC). You can go back to direct upload by using "direct" instead.')
+                }
             })
             .catch(error => {
                 if (error.response) {
                     console.log(`Something wrong happened! ${error}`)
-                    process.exit()
+                    exit()
                 }
             })
 
