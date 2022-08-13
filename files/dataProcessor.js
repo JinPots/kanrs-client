@@ -24,7 +24,7 @@ module.exports = async data => {
     if (config.discordPresence) updatePresence("Working", false)
 
     if (data.turboMode) console.log("ENABLING TURBO MODE. PREPARE FOR FAST RENDER.")
-
+    console.log(data)
     if (data.skin !== "default" && config.customServer.apiUrl === "") {
         if (data.customSkin) {
             // custom skins are saved with CUSTOM_ at the start of the skin filename
